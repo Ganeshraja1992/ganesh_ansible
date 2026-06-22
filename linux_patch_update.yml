@@ -1,0 +1,120 @@
+---
+- name: Update Linux Security Patches
+  hosts: linux
+  gather_facts: yes
+  vars:
+    ansible_verbosity: 2
+
+  tasks:
+    - name: "[START] Security Patch Update Process"
+      ansible.builtin.debug:
+        msg: "Starting security patch update on {{ inventory_hostname }} at {{ ansible_date_time.iso8601 }}"
+
+    - name: "[INFO] System Information"
+      ansible.builtin.debug:
+        msg: |
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Kernel: {{ ansible_kernel }}
+          Architecture: {{ ansible_architecture }}
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 0
+      become: yes
+      register: apt_update
+
+    - name: "[DONE] Apt cache updated"
+      ansible.builtin.debug:
+        msg: "Apt cache successfully refreshed"
+
+    - name: Install security patches only
+      ansible.builtin.apt:
+        upgrade: safe
+        only_upgrade: yes
+      become: yes
+      register: security_patches
+
+    - name: "[DONE] Security patches installed"
+      ansible.builtin.debug:
+        msg: "Security patches installation complete - Changed: {{ security_patches.changed }}"
+
+    - name: Install unattended-upgrades for automatic security updates
+      ansible.builtin.apt:
+        name: unattended-upgrades
+        state: present
+      become: yes
+      register: unattended_install
+
+    - name: "[DONE] Unattended upgrades installed"
+      ansible.builtin.debug:
+        msg: "Unattended-upgrades package installed successfully"
+
+    - name: Enable automatic security updates
+      ansible.builtin.template:
+        src: /etc/apt/apt.conf.d/50unattended-upgrades
+        dest: /etc/apt/apt.conf.d/50unattended-upgrades
+        backup: yes
+      become: yes
+      ignore_errors: yes
+      register: auto_update_config
+
+    - name: "[DONE] Automatic updates configured"
+      ansible.builtin.debug:
+        msg: "Automatic security updates configuration applied"
+
+    - name: Upgrade all packages
+      ansible.builtin.apt:
+        upgrade: full
+      become: yes
+      register: full_upgrade
+
+    - name: "[DONE] Full system upgrade completed"
+      ansible.builtin.debug:
+        msg: "Full package upgrade complete - Changed: {{ full_upgrade.changed }}"
+
+    - name: Autoremove unused packages
+      ansible.builtin.apt:
+        autoremove: yes
+      become: yes
+      register: autoremove_result
+
+    - name: "[DONE] Unused packages removed"
+      ansible.builtin.debug:
+        msg: "Autoremove complete - Changed: {{ autoremove_result.changed }}"
+
+    - name: Autoclean old package cache
+      ansible.builtin.apt:
+        autoclean: yes
+      become: yes
+      register: autoclean_result
+
+    - name: "[DONE] Package cache cleaned"
+      ansible.builtin.debug:
+        msg: "Autoclean complete - Changed: {{ autoclean_result.changed }}"
+
+    - name: Check if system reboot is required
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_required
+
+    - name: Display reboot status
+      ansible.builtin.debug:
+        msg: "System reboot is required"
+      when: reboot_required.stat.exists
+
+    - name: Display no reboot needed status
+      ansible.builtin.debug:
+        msg: "No system reboot required at this time"
+      when: not reboot_required.stat.exists
+
+    - name: "[COMPLETE] Security patch update summary"
+      ansible.builtin.debug:
+        msg: |
+          ============================================
+          Security Patches Successfully Applied
+          ============================================
+          Timestamp: {{ ansible_date_time.iso8601 }}
+          Host: {{ inventory_hostname }}
+          Reboot Required: {{ reboot_required.stat.exists }}
+          ============================================
