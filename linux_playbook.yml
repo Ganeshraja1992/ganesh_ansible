@@ -50,3 +50,12 @@
     - name: Show nginx version
       ansible.builtin.debug:
         var: nginx_version_output.stderr
+
+    - name: Create index.html
+      ansible.builtin.copy:
+        dest: /var/www/html/index.html
+        content: "<html><body><h1>Welcome to Ansible Managed Nginx Server</h1></body></html>"
+        owner: www-data
+        group: www-data
+        mode: '0644'
+      become: yes
