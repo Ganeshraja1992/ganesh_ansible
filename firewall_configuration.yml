@@ -1,0 +1,38 @@
+---
+- name: firewall configuration
+  hosts: linux  
+  gather_facts: yes
+  become: yes
+  tasks:
+    - name: "[START] Firewall Configuration Process"
+      ansible.builtin.debug:
+        msg: "Starting firewall configuration on {{ inventory_hostname }}"
+
+    - name: Install UFW package
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+      register: ufw_install
+
+    - name: "[DONE] UFW installed"
+      ansible.builtin.debug:
+        msg: "UFW package installed successfully - Changed: {{ ufw_install.changed }}"
+
+    - name: Allow SSH through the firewall
+      ansible.builtin.ufw:
+        rule: allow
+        name: OpenSSH
+      register: ssh_rule
+
+    - name: "[DONE] SSH rule added to firewall"
+      ansible.builtin.debug:
+        msg: "SSH rule added to firewall successfully - Changed: {{ ssh_rule.changed }}"
+
+    - name: Enable UFW firewall
+      ansible.builtin.ufw:
+        state: enabled
+      register: ufw_enable
+
+    - name: "[DONE] Firewall enabled"
+      ansible.builtin.debug:
+        msg: "Firewall enabled successfully - Changed: {{ ufw_enable.changed }}"
