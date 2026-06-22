@@ -34,3 +34,19 @@
         state: started
         enabled: yes
       become: yes
+    
+    - name: Check nginx status
+      ansible.builtin.systemd:
+        name: nginx
+        state: started
+      become: yes
+      
+    - name: Get nginx version
+      ansible.builtin.command:
+        cmd: nginx -v
+      register: nginx_version_output
+      ignore_errors: yes
+
+    - name: Show nginx version
+      ansible.builtin.debug:
+        var: nginx_version_output.stderr
