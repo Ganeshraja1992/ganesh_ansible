@@ -1,18 +1,49 @@
 ---
 - name: Install terraform on Linux host
   hosts: linux  
-  gather_facts: no
+  gather_facts: yes
+  become: yes
+  
   tasks:
+    - name: "[START] Terraform Installation Process"
+      ansible.builtin.debug:
+        msg: "Starting Terraform installation on {{ inventory_hostname }}"
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
     - name: Download terraform package
       ansible.builtin.get_url:
         url: https://releases.hashicorp.com/terraform/1.6.4/terraform_1.6.4_linux_amd64.zip
         dest: /tmp/terraform.zip
+      register: download_result
+
+    - name: "[DONE] Terraform zip downloaded"
+      ansible.builtin.debug:
+        msg: "Terraform 1.6.4 downloaded successfully to /tmp/terraform.zip"
+
+    - name: Install unzip package
+      ansible.builtin.apt:
+        name: unzip
+        state: present
+      register: unzip_install
+
+    - name: "[DONE] Unzip installed"
+      ansible.builtin.debug:
+        msg: "Unzip package installed successfully - Changed: {{ unzip_install.changed }}"
 
     - name: Unzip terraform package
       ansible.builtin.unarchive:
         src: /tmp/terraform.zip
         dest: /usr/local/bin/
         remote_src: yes
+      register: unzip_result
+
+    - name: "[DONE] Terraform extracted"
+      ansible.builtin.debug:
+        msg: "Terraform successfully extracted to /usr/local/bin/"
 
     - name: Verify terraform installation
       ansible.builtin.command:
@@ -23,3 +54,14 @@
     - name: Show terraform version
       ansible.builtin.debug:
         var: terraform_version_output.stdout
+
+    - name: "[COMPLETE] Terraform Installation Summary"
+      ansible.builtin.debug:
+        msg: |
+          ============================================
+          Terraform Installation Complete
+          ============================================
+          Host: {{ inventory_hostname }}
+          Installation Path: /usr/local/bin/terraform
+          Unzip Status: {{ unzip_install.changed | ternary('Newly Installed', 'Already Present') }}
+          ============================================
